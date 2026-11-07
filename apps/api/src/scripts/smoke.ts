@@ -18,6 +18,7 @@ try {
     system: "Reply in five words or fewer.",
     messages: [{ role: "user", content: "Say hello." }],
     onText: (t) => (text += t),
+    onToolCall: () => {},
   });
   console.log(`✔ Chat (${config.LLM_PROVIDER}, ${result.servedBy}): "${text.trim()}"`);
 } catch (error) {

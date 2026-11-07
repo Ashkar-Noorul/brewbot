@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chunkMarkdown } from "../chunk.ts";
 import { config } from "../config.ts";
-import { pool, toVector } from "../db.ts";
+import { migrate, pool, toVector } from "../db.ts";
 import { embed } from "../embeddings.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -23,6 +23,7 @@ for (const file of files) {
   console.log(`${file}: ${chunks.length} chunks`);
 }
 
+await migrate();
 const db = await pool.connect();
 try {
   await db.query("BEGIN");

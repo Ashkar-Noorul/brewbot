@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import type { ChatTurn } from "@brewbot/shared";
-import { streamChat } from "./api.ts";
+import { FriendlyError, streamChat } from "./api.ts";
 import type { WidgetConfig } from "./config.ts";
+import { HandoffForm } from "./HandoffForm.tsx";
 import { Message, type UiMessage } from "./Message.tsx";
 import { load, save, sessionId } from "./storage.ts";
 
@@ -9,11 +10,18 @@ const HISTORY_KEY = "brewbot:history";
 // The API accepts up to 40 turns; keep the most recent ones.
 const MAX_TURNS = 20;
 
+const TOOL_STATUS: Record<string, string> = {
+  get_order_status: "Checking your order…",
+  escalate_to_human: "Getting our team…",
+};
+
 export function App({ config }: { config: WidgetConfig }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<UiMessage[]>(() => load(() => sessionStorage, HISTORY_KEY, []));
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  const [toolStatus, setToolStatus] = useState<string | null>(null);
+  const [handoffOpen, setHandoffOpen] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -23,7 +31,7 @@ export function App({ config }: { config: WidgetConfig }) {
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-  }, [messages, open]);
+  }, [messages, open, handoffOpen, toolStatus, busy]);
 
   useEffect(() => {
     if (open) inputRef.current?.focus();
@@ -47,17 +55,26 @@ export function App({ config }: { config: WidgetConfig }) {
     try {
       await streamChat(config.apiUrl, { sessionId: sessionId(), messages: history }, (event) => {
         if (event.type === "sources") updateLast((m) => ({ ...m, sources: event.sources }));
-        if (event.type === "delta") updateLast((m) => ({ ...m, content: m.content + event.text }));
+        if (event.type === "delta") {
+          setToolStatus(null);
+          updateLast((m) => ({ ...m, content: m.content + event.text }));
+        }
+        if (event.type === "tool") setToolStatus(TOOL_STATUS[event.name] ?? "Working on it…");
+        if (event.type === "handoff") setHandoffOpen(true);
         if (event.type === "error") updateLast((m) => ({ ...m, content: event.message, error: true }));
       });
-    } catch {
+    } catch (error) {
       updateLast((m) => ({
         ...m,
-        content: "Sorry, I couldn't reach our support assistant. Please check your connection and try again.",
+        content:
+          error instanceof FriendlyError
+            ? error.message
+            : "Sorry, I couldn't reach our support assistant. Please check your connection and try again.",
         error: true,
       }));
     } finally {
       setBusy(false);
+      setToolStatus(null);
     }
   }
 
@@ -73,6 +90,9 @@ export function App({ config }: { config: WidgetConfig }) {
     }
   }
 
+  const lastQuestion = messages.findLast((m) => m.role === "user")?.content ?? "";
+  const waitingForText = busy && messages.at(-1)?.content === "";
+
   return (
     <div className="root" style={{ "--brand": config.color } as React.CSSProperties}>
       {open && (
@@ -87,26 +107,45 @@ export function App({ config }: { config: WidgetConfig }) {
               <div className="title">{config.title}</div>
               <div className="subtitle">Answers from our help centre</div>
             </div>
-            <button className="icon-btn" onClick={() => setOpen(false)} aria-label="Close chat">
-              <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
+            <div className="header-actions">
+              <button className="header-btn" onClick={() => setHandoffOpen(true)} disabled={handoffOpen}>
+                Talk to a person
+              </button>
+              <button className="icon-btn" onClick={() => setOpen(false)} aria-label="Close chat">
+                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </button>
+            </div>
           </header>
 
           <div className="messages" ref={listRef} aria-live="polite">
             <div className="msg msg-bot">
               <div className="msg-text">{config.greeting}</div>
             </div>
-            {messages.map((m, i) => (
-              <Message key={i} message={m} streaming={busy && i === messages.length - 1} />
-            ))}
-            {busy && messages.at(-1)?.content === "" && (
-              <div className="typing" aria-label="BrewBot is typing">
-                <span />
-                <span />
-                <span />
+            {messages.map((m, i) =>
+              // While the answer is still empty, the typing indicator below stands in for it.
+              waitingForText && i === messages.length - 1 ? null : (
+                <Message key={i} message={m} streaming={busy && i === messages.length - 1} />
+              ),
+            )}
+            {(waitingForText || toolStatus) && (
+              <div className="typing" aria-label={toolStatus ?? "BrewBot is typing"}>
+                <span className="dots">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                {toolStatus && <span className="tool-status">{toolStatus}</span>}
               </div>
+            )}
+            {handoffOpen && !busy && (
+              <HandoffForm
+                apiUrl={config.apiUrl}
+                sessionId={sessionId()}
+                initialMessage={lastQuestion}
+                onDone={() => setHandoffOpen(false)}
+              />
             )}
           </div>
 

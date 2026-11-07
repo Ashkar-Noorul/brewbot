@@ -2,7 +2,7 @@
 
 BrewBot is a customer-support chatbot for **Bean & Barrel Coffee Co.**, a fictional online shop that sells espresso machines and grinders. It answers **only from the shop's own documents**, cites a source for each answer, and when the answer isn't in the documents it says so instead of guessing.
 
-> Status: **Milestones 1–2**: streaming `/chat` API with citations, and an embeddable chat widget. Handoff, analytics and evals are still to come (see the [roadmap](#roadmap)).
+> Status: **Milestones 1–3**: streaming `/chat` API with citations, an embeddable chat widget, order lookups and human handoff. Analytics and evals are still to come (see the [roadmap](#roadmap)).
 
 ## Architecture
 
@@ -20,7 +20,7 @@ visitor ──► POST /chat (SSE) ──► embed question ──► top-k simi
 
 | Piece | Choice | Why |
 |---|---|---|
-| LLM | Pluggable: Gemini 3.6 Flash (free tier), Claude Sonnet 5.5 via the Claude API, or Claude on Amazon Bedrock | No vendor lock-in; models can be compared on the same eval set. Bedrock keeps data in the client's AWS account |
+| LLM | Pluggable: Gemini 3.5 Flash-Lite (free tier), Claude Sonnet 5.5 via the Claude API, or Claude on Amazon Bedrock | No vendor lock-in; models can be compared on the same eval set. Bedrock keeps data in the client's AWS account |
 | Embeddings | Pluggable: Gemini Embedding 2 or Amazon Titan Text Embeddings V2, 1024 dims, normalised | Each chunk records which model embedded it, so vectors from different models are never mixed |
 | Vector store | Postgres + pgvector (HNSW, cosine) | One database for vectors, logs and tickets; no extra managed service to pay for |
 | API | Node.js, TypeScript, Express 5, Zod | Typed end to end; types shared with the widget via `packages/shared` |
@@ -75,6 +75,19 @@ data: {"type":"delta","text":"E03 means the brew boiler temperature sensor..."}
 data: {"type":"done","stopReason":"end_turn","servedBy":"anthropic.claude-sonnet-5-5","usage":{...}}
 ```
 
+## Tools and human handoff
+
+The model can call two tools, defined once in `apps/api/src/tools.ts` and adapted to each provider:
+
+| Tool | What it does | Safeguards |
+|---|---|---|
+| `get_order_status` | Looks up an order (mock `orders` table standing in for a Shopify or WooCommerce API) | Needs **both** order number and email; the reply is the same whether the number or the email was wrong, so it can't be used to find out which orders exist; arguments validated with Zod before running |
+| `escalate_to_human` | Shows the visitor a contact form | Backed up by a check in code: if the visitor clearly asks for a person, the form is offered even when the model forgets to call the tool |
+
+Submitting the form calls `POST /handoff`, which creates a row in `tickets` with the conversation transcript taken from the server's own `chat_logs` (not from the browser, so it can't be forged), and optionally posts to a Slack-compatible `HANDOFF_WEBHOOK_URL`. The form is also offered when the model refuses, or when the AI provider is rate-limited or down, so the visitor never hits a dead end.
+
+**Guardrails:** per-IP rate limits (`CHAT_RATE_LIMIT_PER_MINUTE`, 5 handoffs an hour), tool loop capped at 4 rounds, tool results and sources treated as data rather than instructions, input length limits, and the database schema is applied automatically on startup (`db/schema.sql` is idempotent).
+
 ## The chat widget
 
 Any website can add the bot with one tag:
@@ -98,5 +111,5 @@ Any website can add the bot with one tag:
 - [x] **M1**: knowledge base, ingestion, RAG `/chat` with citations and streaming, chat logging
 - [x] **M2**: embeddable React widget (`<script>` tag) and demo page
 - [ ] **M2b**: deploy the API and demo page publicly
-- [ ] **M3**: human handoff (collect contact details and create a ticket), `get_order_status` tool, guardrails
+- [x] **M3**: human handoff (contact form, tickets, webhook), `get_order_status` tool, guardrails
 - [ ] **M4**: analytics dashboard (top questions, unanswered rate, feedback), eval suite with accuracy score, CI/CD and IaC

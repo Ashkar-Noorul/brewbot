@@ -27,6 +27,10 @@ export interface Source {
 export type ChatStreamEvent =
   | { type: "sources"; sources: Source[]; lowConfidence: boolean }
   | { type: "delta"; text: string }
+  /** The bot is using a tool, e.g. looking up an order. */
+  | { type: "tool"; name: string }
+  /** The bot thinks a human should follow up; the widget shows the contact form. */
+  | { type: "handoff" }
   | {
       type: "done";
       stopReason: string | null;
@@ -34,3 +38,15 @@ export type ChatStreamEvent =
       usage: { inputTokens: number; outputTokens: number };
     }
   | { type: "error"; message: string };
+
+/** Body of POST /handoff, sent by the widget's contact form. */
+export interface HandoffRequest {
+  sessionId: string;
+  name: string;
+  email: string;
+  message: string;
+}
+
+export interface HandoffResponse {
+  ticketId: number;
+}

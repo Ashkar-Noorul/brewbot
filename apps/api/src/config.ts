@@ -12,6 +12,8 @@ const schema = z.object({
   DATABASE_URL: z.string().default("postgres://brewbot:brewbot@localhost:5433/brewbot"),
   RETRIEVAL_TOP_K: z.coerce.number().int().positive().default(5),
   LOW_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.35),
+  CHAT_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(20),
+  HANDOFF_WEBHOOK_URL: z.url().or(z.literal("")).optional(),
   PORT: z.coerce.number().int().default(3001),
   CORS_ORIGIN: z.string().default("*"),
 });
@@ -19,7 +21,8 @@ const schema = z.object({
 const env = schema.parse(process.env);
 
 const defaultChatModel = {
-  gemini: "gemini-3.6-flash",
+  // Flash-Lite has a much larger free-tier daily quota than Flash, which allows only ~20 requests a day.
+  gemini: "gemini-3.5-flash-lite",
   anthropic: "claude-sonnet-5-5",
   // Bedrock model IDs carry an "anthropic." prefix.
   bedrock: "anthropic.claude-sonnet-5-5",

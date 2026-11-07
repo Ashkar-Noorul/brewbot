@@ -6,6 +6,7 @@ import { pool } from "../db.ts";
 import { streamAnswer } from "../llm.ts";
 import { buildMessages, SYSTEM_PROMPT } from "../prompt.ts";
 import { search } from "../retrieval.ts";
+import { ESCALATE_TOOL } from "../tools.ts";
 
 const chatRequest = z.object({
   sessionId: z.string().min(1).max(100),
@@ -17,7 +18,25 @@ const chatRequest = z.object({
 });
 
 const REFUSAL_REPLY =
-  "Sorry, I can't help with that one. Would you like me to connect you with our support team?";
+  "Sorry, I can't help with that one. If you'd like, leave your details below and our team will get back to you.";
+
+const BUSY_REPLY =
+  "Our assistant is very busy right now. Leave your details below and our team will reply within one working day.";
+
+/** Rate-limited (429) or overloaded (503, 529) errors from the model provider; both SDKs expose `status`. */
+function isProviderBusy(error: unknown): boolean {
+  const status = (error as { status?: unknown } | null)?.status;
+  return status === 429 || status === 503 || status === 529;
+}
+
+// A deterministic backstop for the escalate_to_human tool: smaller models sometimes reply
+// "I've connected you" without calling it, and a visitor asking for a person must always get the form.
+const HUMAN_REQUEST =
+  /\b(speak|talk|chat|connect me)\b.{0,30}\b(human|person|someone|agent|representative|staff|team)\b|\b(human|agent|representative)\b.{0,30}\b(speak|talk|chat)\b|\breal (person|human)\b/i;
+
+function asksForHuman(question: string): boolean {
+  return HUMAN_REQUEST.test(question);
+}
 
 export const chatRouter = Router();
 
@@ -67,6 +86,7 @@ chatRouter.post("/chat", async (req, res) => {
         answer += text;
         send({ type: "delta", text });
       },
+      onToolCall: (name) => send({ type: "tool", name }),
     });
 
     if (result.refused) {
@@ -75,20 +95,30 @@ chatRouter.post("/chat", async (req, res) => {
       send({ type: "delta", text: reply });
     }
 
+    const handoffOffered =
+      result.refused || result.toolsUsed.includes(ESCALATE_TOOL) || asksForHuman(question);
+    if (handoffOffered) send({ type: "handoff" });
+
     send({ type: "done", stopReason: result.stopReason, servedBy: result.servedBy, usage: result.usage });
 
     await pool.query(
-      `INSERT INTO chat_logs (session_id, question, answer, top_similarity, low_confidence,
-                              stop_reason, served_by, input_tokens, output_tokens, latency_ms)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      `INSERT INTO chat_logs (session_id, question, answer, top_similarity, low_confidence, stop_reason,
+                              served_by, input_tokens, output_tokens, latency_ms, tools_used, handoff_offered)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
       [
         sessionId, question, answer, topSimilarity, lowConfidence, result.stopReason, result.servedBy,
-        result.usage.inputTokens, result.usage.outputTokens, Date.now() - started,
+        result.usage.inputTokens, result.usage.outputTokens, Date.now() - started, result.toolsUsed, handoffOffered,
       ],
     );
   } catch (error) {
     console.error("chat failed", error);
-    send({ type: "error", message: "Something went wrong. Please try again in a moment." });
+    if (isProviderBusy(error)) {
+      // Out of quota or overloaded: rather than a dead end, offer the contact form.
+      send({ type: "error", message: BUSY_REPLY });
+      send({ type: "handoff" });
+    } else {
+      send({ type: "error", message: "Something went wrong. Please try again in a moment." });
+    }
   } finally {
     res.end();
   }

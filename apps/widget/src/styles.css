@@ -106,6 +106,36 @@ button {
   opacity: 0.85;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.header-btn {
+  padding: 6px 10px;
+  border: 1px solid rgb(255 255 255 / 0.45);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.header-btn:hover:not(:disabled) {
+  background: rgb(255 255 255 / 0.15);
+}
+
+.header-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.header-btn:focus-visible {
+  outline: 3px solid rgb(255 255 255 / 0.6);
+  outline-offset: 2px;
+}
+
 .icon-btn {
   display: grid;
   place-items: center;
@@ -218,14 +248,25 @@ button {
 
 .typing {
   display: flex;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
   align-self: flex-start;
   padding: 12px 14px;
   border-radius: 14px;
   background: var(--surface);
 }
 
-.typing span {
+.dots {
+  display: flex;
+  gap: 4px;
+}
+
+.tool-status {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.dots span {
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -233,11 +274,11 @@ button {
   animation: bounce 1.2s infinite ease-in-out;
 }
 
-.typing span:nth-child(2) {
+.dots span:nth-child(2) {
   animation-delay: 0.15s;
 }
 
-.typing span:nth-child(3) {
+.dots span:nth-child(3) {
   animation-delay: 0.3s;
 }
 
@@ -252,6 +293,102 @@ button {
     transform: translateY(-4px);
     opacity: 1;
   }
+}
+
+.handoff {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--bg);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.06);
+}
+
+.handoff-title {
+  font-weight: 600;
+}
+
+.handoff label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.handoff input,
+.handoff textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.handoff input:focus,
+.handoff textarea:focus {
+  outline: none;
+  border-color: var(--brand);
+}
+
+.handoff-error {
+  font-size: 13px;
+  color: var(--error);
+}
+
+.handoff-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.handoff-sent {
+  display: block;
+  line-height: 1.5;
+}
+
+.handoff-sent .link-btn {
+  display: block;
+  margin-top: 8px;
+  padding-left: 0;
+}
+
+.primary-btn {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+}
+
+.primary-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.link-btn {
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  color: var(--brand);
+}
+
+@media (prefers-color-scheme: dark) {
+  .link-btn {
+    color: var(--text);
+  }
+}
+
+.primary-btn:focus-visible,
+.link-btn:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--brand) 45%, transparent);
+  outline-offset: 2px;
 }
 
 .composer {
@@ -299,7 +436,7 @@ button {
 @media (prefers-reduced-motion: reduce) {
   .panel,
   .caret,
-  .typing span {
+  .dots span {
     animation: none;
   }
 }

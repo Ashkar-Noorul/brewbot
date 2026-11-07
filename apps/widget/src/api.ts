@@ -1,4 +1,18 @@
-import type { ChatRequest, ChatStreamEvent } from "@brewbot/shared";
+import type { ChatRequest, ChatStreamEvent, HandoffRequest, HandoffResponse } from "@brewbot/shared";
+
+/** An error whose message is safe and helpful to show the visitor as-is. */
+export class FriendlyError extends Error {}
+
+export async function submitHandoff(apiUrl: string, request: HandoffRequest): Promise<HandoffResponse> {
+  const response = await fetch(`${apiUrl}/handoff`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
+  if (response.status === 429) throw new FriendlyError("Too many requests. Please try again later.");
+  if (!response.ok) throw new FriendlyError("Please check your name and email and try again.");
+  return (await response.json()) as HandoffResponse;
+}
 
 /**
  * POSTs to /chat and calls onEvent for each server-sent event.
@@ -16,6 +30,9 @@ export async function streamChat(
     body: JSON.stringify(request),
     signal,
   });
+  if (response.status === 429) {
+    throw new FriendlyError("You're sending messages quite quickly. Please wait a minute and try again.");
+  }
   if (!response.ok || !response.body) {
     throw new Error(`Chat request failed with status ${response.status}`);
   }
