@@ -1,0 +1,20 @@
+{
+  "name": "brewbot",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "ingest": "npm run ingest -w @brewbot/api",
+    "smoke": "npm run smoke -w @brewbot/api",
+    "dev": "npm run dev -w @brewbot/api",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2"
+  }
+}

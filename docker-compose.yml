@@ -1,0 +1,15 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: brewbot
+      POSTGRES_PASSWORD: brewbot
+      POSTGRES_DB: brewbot
+    ports:
+      - "5433:5432"   # 5433 on the host, so it doesn't clash with a locally installed Postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./apps/api/db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+
+volumes:
+  pgdata:

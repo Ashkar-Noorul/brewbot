@@ -1,0 +1,53 @@
+@api = http://localhost:3001
+
+### Health and chunk count
+GET {{api}}/health
+
+### Grounded answer (troubleshooting)
+POST {{api}}/chat
+Content-Type: application/json
+
+{
+  "sessionId": "demo-1",
+  "messages": [{ "role": "user", "content": "My Aurora is showing E03, what should I do?" }]
+}
+
+### Policy nuance (opened grinder return)
+POST {{api}}/chat
+Content-Type: application/json
+
+{
+  "sessionId": "demo-2",
+  "messages": [{ "role": "user", "content": "Can I return a grinder I've already used?" }]
+}
+
+### Follow-up that relies on conversation history
+POST {{api}}/chat
+Content-Type: application/json
+
+{
+  "sessionId": "demo-3",
+  "messages": [
+    { "role": "user", "content": "How long is the warranty on the Aurora?" },
+    { "role": "assistant", "content": "The Aurora has a 2-year warranty, extended to 3 years if you register it within 60 days of delivery [1]." },
+    { "role": "user", "content": "And the grinder?" }
+  ]
+}
+
+### Not in the docs: should say it doesn't know and offer a human
+POST {{api}}/chat
+Content-Type: application/json
+
+{
+  "sessionId": "demo-4",
+  "messages": [{ "role": "user", "content": "Do you ship to Canada?" }]
+}
+
+### Off-topic: should politely decline
+POST {{api}}/chat
+Content-Type: application/json
+
+{
+  "sessionId": "demo-5",
+  "messages": [{ "role": "user", "content": "Write me a poem about the stock market" }]
+}
