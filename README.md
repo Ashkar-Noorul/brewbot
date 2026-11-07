@@ -2,7 +2,7 @@
 
 BrewBot is a customer-support chatbot for **Bean & Barrel Coffee Co.**, a fictional online shop that sells espresso machines and grinders. It answers **only from the shop's own documents**, cites a source for each answer, and when the answer isn't in the documents it says so instead of guessing.
 
-> Status: **Milestones 1–3**: streaming `/chat` API with citations, an embeddable chat widget, order lookups and human handoff. Analytics and evals are still to come (see the [roadmap](#roadmap)).
+> Status: **Milestones 1–3 and the eval suite**: streaming `/chat` API with citations, an embeddable chat widget, order lookups, human handoff, and an automated eval scoring 36/37. Analytics and deployment are still to come (see the [roadmap](#roadmap)).
 
 ## Architecture
 
@@ -88,6 +88,41 @@ Submitting the form calls `POST /handoff`, which creates a row in `tickets` with
 
 **Guardrails:** per-IP rate limits (`CHAT_RATE_LIMIT_PER_MINUTE`, 5 handoffs an hour), tool loop capped at 4 rounds, tool results and sources treated as data rather than instructions, input length limits, and the database schema is applied automatically on startup (`db/schema.sql` is idempotent).
 
+## Evaluation
+
+`npm run eval` runs 37 test cases through the same pipeline as `POST /chat` and scores every answer automatically. All checks are deterministic (regex, tool calls, events), so a run costs only the chatbot's own model calls and the same answer always gets the same verdict.
+
+| Category | Cases | What is checked |
+|---|---|---|
+| FAQ, policy, troubleshooting, follow-up | 24 | Key facts present (e.g. "15%" restocking fee), the right document retrieved, and that document cited |
+| Orders and privacy | 5 | Right tool called; asks for missing details; **no data about other customers' orders leaks** with a wrong email or an "I'm the admin" request |
+| Handoff and unanswerable | 6 | Contact form offered for complaints, cancellations and questions the docs can't answer; no invented prices or discounts |
+| Off-topic and prompt injection | 2 | Declines, and doesn't reveal the system prompt |
+| **Every case** | 37 | If the answer claims a handoff ("I've opened a form…"), one actually happened |
+
+**Latest results** (Gemini 3.5 Flash-Lite):
+
+| Metric | Result |
+|---|---|
+| Cases passed | **36/37 (97%)** |
+| Retrieval hit@5 | 24/24 (100%) |
+| Answer cites the right document | 24/24 (100%) |
+| Average latency | ~4s |
+
+The one failure: asked about an order without an email, the model sometimes calls `get_order_status` anyway instead of asking first. The tool's input validation rejects the call, so nothing leaks, but the model broke its instructions, so the case stays failed rather than the check being loosened. Scores vary by a case or two between runs, since model output isn't deterministic.
+
+**Bugs the eval found, all fixed:**
+- The model said "I've opened a contact form" without calling the tool, so no form appeared. Fixed with a backstop in code, plus a check on every case.
+- An intermittent empty response from the model produced a blank chat bubble. Now retried once, then answered with a fallback message and the contact form.
+- An overly narrow check marked a correct answer as wrong. Widened the check after reading the answer.
+
+```bash
+npm run eval                            # all cases
+npm run eval -- --category privacy      # one category
+npm run eval -- --ids e03,klarna        # specific cases
+```
+Full answers and per-check results are saved to `apps/api/eval-results/`.
+
 ## The chat widget
 
 Any website can add the bot with one tag:
@@ -110,6 +145,8 @@ Any website can add the bot with one tag:
 
 - [x] **M1**: knowledge base, ingestion, RAG `/chat` with citations and streaming, chat logging
 - [x] **M2**: embeddable React widget (`<script>` tag) and demo page
-- [ ] **M2b**: deploy the API and demo page publicly
 - [x] **M3**: human handoff (contact form, tickets, webhook), `get_order_status` tool, guardrails
-- [ ] **M4**: analytics dashboard (top questions, unanswered rate, feedback), eval suite with accuracy score, CI/CD and IaC
+- [x] **M4a**: eval suite (37 cases, deterministic scoring)
+- [ ] **M4b**: analytics dashboard (top questions, unanswered rate, handoff rate)
+- [ ] **M4c**: public deployment
+- [ ] **M4d**: CI/CD (typecheck and evals on every push)

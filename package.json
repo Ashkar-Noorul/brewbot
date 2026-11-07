@@ -11,6 +11,7 @@
     "db:down": "docker compose down",
     "ingest": "npm run ingest -w @brewbot/api",
     "smoke": "npm run smoke -w @brewbot/api",
+    "eval": "npm run eval -w @brewbot/api --",
     "build": "npm run build -w @brewbot/widget",
     "dev": "npm run dev -w @brewbot/api",
     "dev:widget": "npm run dev -w @brewbot/widget",
