@@ -2,7 +2,7 @@
 
 BrewBot is a customer-support chatbot for **Bean & Barrel Coffee Co.**, a fictional online shop that sells espresso machines and grinders. It answers **only from the shop's own documents**, cites a source for each answer, and when the answer isn't in the documents it says so instead of guessing.
 
-> Status: **Milestone 1**: ingestion pipeline and streaming `/chat` API with citations. The widget, handoff flow, analytics dashboard and evals are still to come (see the [roadmap](#roadmap)).
+> Status: **Milestones 1–2**: streaming `/chat` API with citations, and an embeddable chat widget. Handoff, analytics and evals are still to come (see the [roadmap](#roadmap)).
 
 ## Architecture
 
@@ -37,7 +37,8 @@ visitor ──► POST /chat (SSE) ──► embed question ──► top-k simi
 ## Project layout
 
 ```
-apps/api            Express API: ingestion, retrieval, /chat
+apps/api            Express API: ingestion, retrieval, /chat; also serves the widget and demo page
+apps/widget         Embeddable React chat widget, built to a single brewbot.js
   db/schema.sql     pgvector tables (chunks, chat_logs)
   src/scripts/ingest.ts
 packages/shared     Types shared by the API, widget and dashboard
@@ -74,9 +75,28 @@ data: {"type":"delta","text":"E03 means the brew boiler temperature sensor..."}
 data: {"type":"done","stopReason":"end_turn","servedBy":"anthropic.claude-sonnet-5-5","usage":{...}}
 ```
 
+## The chat widget
+
+Any website can add the bot with one tag:
+
+```html
+<script src="https://your-api.example.com/brewbot.js"
+        data-title="Bean & Barrel Help" data-color="#7a4b2a" defer></script>
+```
+
+- **One file:** React and the CSS are bundled into `brewbot.js` (about 72 KB gzipped).
+- **Shadow DOM:** the host site's CSS can't restyle the widget, and the widget's CSS can't leak into the site, so it works on any WordPress or Shopify theme.
+- **Configured by `data-*` attributes:** `data-title`, `data-color`, `data-greeting`, and `data-api-url` (defaults to wherever the script was loaded from).
+- **Streaming answers** with citation chips and a list of the sources each answer used.
+- **Mobile and accessibility:** full screen on phones, dark mode, keyboard support (Enter to send, Escape to close), screen-reader labels, reduced motion.
+- The conversation survives page navigation within a tab (sessionStorage); a visitor id in localStorage groups their chats in the logs.
+
+`npm start` builds the widget and serves a demo shop page at http://localhost:3001 with the bot embedded. For widget development, run `npm run dev:widget` (rebuilds on save) alongside `npm run dev`.
+
 ## Roadmap
 
 - [x] **M1**: knowledge base, ingestion, RAG `/chat` with citations and streaming, chat logging
-- [ ] **M2**: embeddable React widget (`<script>` tag), deployed demo page
+- [x] **M2**: embeddable React widget (`<script>` tag) and demo page
+- [ ] **M2b**: deploy the API and demo page publicly
 - [ ] **M3**: human handoff (collect contact details and create a ticket), `get_order_status` tool, guardrails
 - [ ] **M4**: analytics dashboard (top questions, unanswered rate, feedback), eval suite with accuracy score, CI/CD and IaC

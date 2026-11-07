@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bean &amp; Barrel Coffee Co. (BrewBot demo)</title>
+    <style>
+      :root {
+        --ink: #2b211b;
+        --cream: #faf6f1;
+        --brown: #7a4b2a;
+        --muted: #6f625a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font: 16px/1.6 Georgia, "Times New Roman", serif;
+        color: var(--ink);
+        background: var(--cream);
+      }
+      .banner {
+        padding: 8px 16px;
+        background: #2b211b;
+        color: #f3e9df;
+        font: 13px/1.4 system-ui, sans-serif;
+        text-align: center;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 20px 16px;
+      }
+      .logo {
+        font-size: 22px;
+        font-weight: bold;
+        letter-spacing: 0.5px;
+      }
+      nav a {
+        margin-left: 20px;
+        color: var(--ink);
+        text-decoration: none;
+        font: 15px system-ui, sans-serif;
+      }
+      .hero {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 48px 16px 64px;
+      }
+      .hero h1 {
+        max-width: 640px;
+        margin: 0 0 16px;
+        font-size: clamp(32px, 6vw, 52px);
+        line-height: 1.1;
+      }
+      .hero p {
+        max-width: 560px;
+        color: var(--muted);
+        font-size: 18px;
+      }
+      .cta {
+        display: inline-block;
+        margin-top: 12px;
+        padding: 12px 22px;
+        border-radius: 999px;
+        background: var(--brown);
+        color: #fff;
+        text-decoration: none;
+        font: 600 15px system-ui, sans-serif;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 16px 80px;
+      }
+      .card {
+        padding: 24px;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 2px 10px rgb(0 0 0 / 0.06);
+      }
+      .card h3 {
+        margin: 0 0 4px;
+      }
+      .price {
+        color: var(--brown);
+        font: 600 15px system-ui, sans-serif;
+      }
+      .try {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 0 16px 120px;
+        font: 15px/1.6 system-ui, sans-serif;
+        color: var(--muted);
+      }
+      .try code {
+        padding: 2px 6px;
+        border-radius: 6px;
+        background: #efe6dc;
+        color: var(--ink);
+      }
+      @media (max-width: 600px) {
+        nav {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="banner">Demo site for a fictional shop. Click the chat bubble in the bottom-right corner.</div>
+    <header>
+      <div class="logo">Bean &amp; Barrel</div>
+      <nav>
+        <a href="#">Machines</a>
+        <a href="#">Grinders</a>
+        <a href="#">Barrel Club</a>
+        <a href="#">Help</a>
+      </nav>
+    </header>
+
+    <section class="hero">
+      <h1>Café-quality espresso, at home.</h1>
+      <p>Dual boiler machines, flat burr grinders and freshly roasted beans from independent UK roasters.</p>
+      <a class="cta" href="#">Shop machines</a>
+    </section>
+
+    <section class="grid">
+      <div class="card">
+        <h3>Aurora Dual Boiler</h3>
+        <div class="price">£1,249</div>
+        <p>Pull a shot and steam milk at the same time, with PID temperature control.</p>
+      </div>
+      <div class="card">
+        <h3>Nimbus 64 Grinder</h3>
+        <div class="price">£449</div>
+        <p>Single-dose flat burr grinder with stepless adjustment from espresso to French press.</p>
+      </div>
+      <div class="card">
+        <h3>Barrel Club</h3>
+        <div class="price">£16 / delivery</div>
+        <p>Two bags of fresh beans every 2 or 4 weeks, plus 10% off machines and grinders.</p>
+      </div>
+    </section>
+
+    <section class="try">
+      Things to ask the assistant: <code>My Aurora shows E03</code> · <code>Can I return a used grinder?</code> ·
+      <code>How do I descale?</code> · <code>Do you ship to Canada?</code>
+    </section>
+
+    <!-- The whole integration: one script tag. -->
+    <script src="brewbot.js" data-title="Bean & Barrel Help" data-color="#7a4b2a" defer></script>
+  </body>
+</html>
