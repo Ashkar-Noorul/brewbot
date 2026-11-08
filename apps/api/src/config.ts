@@ -14,6 +14,8 @@ const schema = z.object({
   LOW_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.35),
   CHAT_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(20),
   HANDOFF_WEBHOOK_URL: z.url().or(z.literal("")).optional(),
+  // Protects the analytics dashboard, which shows customer names and emails. Unset = dashboard disabled.
+  ADMIN_TOKEN: z.string().min(16).or(z.literal("")).optional(),
   PORT: z.coerce.number().int().default(3001),
   CORS_ORIGIN: z.string().default("*"),
 });

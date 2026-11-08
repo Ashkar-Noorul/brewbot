@@ -41,12 +41,13 @@ chatRouter.post("/chat", async (req, res) => {
 
     await pool.query(
       `INSERT INTO chat_logs (session_id, question, answer, top_similarity, low_confidence, stop_reason,
-                              served_by, input_tokens, output_tokens, latency_ms, tools_used, handoff_offered)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+                              served_by, input_tokens, output_tokens, latency_ms, tools_used, handoff_offered,
+                              top_source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         sessionId, messages.at(-1)!.content, outcome.answer, outcome.topSimilarity, outcome.lowConfidence,
         result.stopReason, result.servedBy, result.usage.inputTokens, result.usage.outputTokens,
-        Date.now() - started, result.toolsUsed, outcome.handoffOffered,
+        Date.now() - started, result.toolsUsed, outcome.handoffOffered, outcome.sources[0]?.title ?? null,
       ],
     );
   } catch (error) {

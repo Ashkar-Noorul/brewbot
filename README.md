@@ -2,7 +2,7 @@
 
 BrewBot is a customer-support chatbot for **Bean & Barrel Coffee Co.**, a fictional online shop that sells espresso machines and grinders. It answers **only from the shop's own documents**, cites a source for each answer, and when the answer isn't in the documents it says so instead of guessing.
 
-> Status: **Milestones 1–3 and the eval suite**: streaming `/chat` API with citations, an embeddable chat widget, order lookups, human handoff, and an automated eval scoring 36/37. Analytics and deployment are still to come (see the [roadmap](#roadmap)).
+> Status: **Milestones 1–4b**: streaming `/chat` API with citations, an embeddable chat widget, order lookups, human handoff, an automated eval scoring 36/37, and an analytics dashboard. Deployment and CI are next (see the [roadmap](#roadmap)).
 
 ## Architecture
 
@@ -39,6 +39,7 @@ visitor ──► POST /chat (SSE) ──► embed question ──► top-k simi
 ```
 apps/api            Express API: ingestion, retrieval, /chat; also serves the widget and demo page
 apps/widget         Embeddable React chat widget, built to a single brewbot.js
+apps/dashboard      Analytics dashboard (React), served by the API at /admin
   db/schema.sql     pgvector tables (chunks, chat_logs)
   src/scripts/ingest.ts
 packages/shared     Types shared by the API, widget and dashboard
@@ -141,12 +142,28 @@ Any website can add the bot with one tag:
 
 `npm start` builds the widget and serves a demo shop page at http://localhost:3001 with the bot embedded. For widget development, run `npm run dev:widget` (rebuilds on save) alongside `npm run dev`.
 
+## Analytics dashboard
+
+![Analytics dashboard](docs/dashboard.png)
+
+A dashboard for the shop owner at `/admin`, built from the `chat_logs` and `tickets` tables:
+
+- **Headline numbers** compared with the previous period: questions, conversations, handoff rate, "no good match" rate, average reply time, order lookups and open tickets.
+- **Questions per day**, answered by the bot vs handed to a person, with a tooltip, keyboard navigation and a table view.
+- **What customers ask about**, ranked by the document that best matched each question.
+- **Questions the bot couldn't answer well**, grouped by question and counted. This is the to-do list for improving the docs.
+- **Support tickets** with the chat transcript, a reply-by-email link, and close/reopen.
+
+Access needs a bearer token: set `ADMIN_TOKEN` in `.env` (at least 16 characters, e.g. `openssl rand -hex 24`) and sign in with it. The admin API is same-origin only and rate limited, and it compares the token in constant time. Without `ADMIN_TOKEN` the dashboard is turned off.
+
+For a demo with realistic data, `npm run seed:demo` adds 60 days of synthetic conversations and tickets. They are tagged, so `npm run seed:demo -- --clear` removes only those. `npm start` builds the widget and the dashboard; for dashboard development, run `npm run dev:dashboard` alongside `npm run dev`.
+
 ## Roadmap
 
 - [x] **M1**: knowledge base, ingestion, RAG `/chat` with citations and streaming, chat logging
 - [x] **M2**: embeddable React widget (`<script>` tag) and demo page
 - [x] **M3**: human handoff (contact form, tickets, webhook), `get_order_status` tool, guardrails
 - [x] **M4a**: eval suite (37 cases, deterministic scoring)
-- [ ] **M4b**: analytics dashboard (top questions, unanswered rate, handoff rate)
+- [x] **M4b**: analytics dashboard (trends, topics, weak answers, tickets)
 - [ ] **M4c**: public deployment
 - [ ] **M4d**: CI/CD (typecheck and evals on every push)

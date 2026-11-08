@@ -5,18 +5,21 @@ import express from "express";
 import { rateLimit } from "express-rate-limit";
 import { config } from "./config.ts";
 import { migrate, pool } from "./db.ts";
+import { adminRouter } from "./routes/admin.ts";
 import { chatRouter } from "./routes/chat.ts";
 import { handoffRouter } from "./routes/handoff.ts";
 
+const appsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 // The built widget (brewbot.js) and its demo page, from "npm run build -w @brewbot/widget".
-const widgetDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../widget/dist");
+const widgetDir = path.join(appsDir, "widget/dist");
+// The analytics dashboard, from "npm run build -w @brewbot/dashboard".
+const dashboardDir = path.join(appsDir, "dashboard/dist");
 
 await migrate();
 
 const app = express();
 // Behind a proxy or load balancer in production, so rate limits see the visitor's IP.
 app.set("trust proxy", 1);
-app.use(cors({ origin: config.CORS_ORIGIN }));
 app.use(express.json({ limit: "100kb" }));
 
 // Per-IP limits: each chat message costs money, and the order lookup shouldn't be brute-forced.
@@ -28,12 +31,22 @@ app.get("/health", async (_req, res) => {
   res.json({ ok: true, provider: config.LLM_PROVIDER, model: config.CHAT_MODEL, chunks: Number(rows[0]?.count) });
 });
 
-app.use("/chat", limit(1, config.CHAT_RATE_LIMIT_PER_MINUTE));
-app.use("/handoff", limit(60, 5));
+// Public, called from customers' sites by the widget.
+const publicCors = cors({ origin: config.CORS_ORIGIN });
+app.use("/chat", publicCors, limit(1, config.CHAT_RATE_LIMIT_PER_MINUTE));
+app.use("/handoff", publicCors, limit(60, 5));
 app.use(chatRouter);
 app.use(handoffRouter);
+
+// Admin API: same origin as the dashboard only (no CORS), token required, and rate limited
+// so the token can't be brute-forced.
+app.use("/api/admin", limit(1, 60), adminRouter);
+app.use("/admin", express.static(dashboardDir));
+app.get(/^\/admin(\/.*)?$/, (_req, res) => res.sendFile(path.join(dashboardDir, "index.html")));
+
 app.use(express.static(widgetDir));
 
 app.listen(config.PORT, () => {
   console.log(`BrewBot API on http://localhost:${config.PORT} (${config.LLM_PROVIDER}, ${config.CHAT_MODEL})`);
+  console.log(`Analytics: http://localhost:${config.PORT}/admin ${config.ADMIN_TOKEN ? "" : "(disabled: set ADMIN_TOKEN)"}`);
 });

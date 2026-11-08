@@ -34,7 +34,10 @@ CREATE TABLE IF NOT EXISTS chat_logs (
 );
 ALTER TABLE chat_logs ADD COLUMN IF NOT EXISTS tools_used TEXT[] NOT NULL DEFAULT '{}';
 ALTER TABLE chat_logs ADD COLUMN IF NOT EXISTS handoff_offered BOOLEAN NOT NULL DEFAULT false;
+-- Title of the best-matching document, used as the question's topic in analytics.
+ALTER TABLE chat_logs ADD COLUMN IF NOT EXISTS top_source TEXT;
 CREATE INDEX IF NOT EXISTS chat_logs_session_idx ON chat_logs (session_id, id);
+CREATE INDEX IF NOT EXISTS chat_logs_created_idx ON chat_logs (created_at);
 
 -- Requests for a human, created from the widget's contact form.
 CREATE TABLE IF NOT EXISTS tickets (

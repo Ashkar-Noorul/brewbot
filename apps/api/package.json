@@ -9,7 +9,8 @@
     "ingest": "tsx --env-file=../../.env src/scripts/ingest.ts",
     "smoke": "tsx --env-file=../../.env src/scripts/smoke.ts",
     "typecheck": "tsc -p tsconfig.json",
-    "eval": "tsx --env-file=../../.env src/evals/run.ts"
+    "eval": "tsx --env-file=../../.env src/evals/run.ts",
+    "seed:demo": "tsx --env-file=../../.env src/scripts/seed-demo.ts"
   },
   "dependencies": {
     "@anthropic-ai/bedrock-sdk": "^1.1.1",
