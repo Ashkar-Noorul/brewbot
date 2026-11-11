@@ -11,7 +11,8 @@ const schema = z.object({
   EMBEDDING_MODEL: z.string().optional(),
   DATABASE_URL: z.string().default("postgres://brewbot:brewbot@localhost:5433/brewbot"),
   RETRIEVAL_TOP_K: z.coerce.number().int().positive().default(5),
-  LOW_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.35),
+  // Unset = the default for the embedding model (see below), since each model scores on its own scale.
+  LOW_CONFIDENCE_THRESHOLD: z.coerce.number().min(0).max(1).optional(),
   CHAT_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(20),
   HANDOFF_WEBHOOK_URL: z.url().or(z.literal("")).optional(),
   // Protects the analytics dashboard, which shows customer names and emails. Unset = dashboard disabled.
@@ -35,8 +36,16 @@ const defaultEmbeddingModel = {
   bedrock: "amazon.titan-embed-text-v2:0",
 }[env.EMBEDDING_PROVIDER];
 
+// Below this best-match similarity, the answer is probably not in the docs. Gemini Embedding 2
+// scores good matches about 0.65-0.9 and unrelated text about 0.4-0.55; Titan V2 scores lower overall.
+const defaultLowConfidenceThreshold = {
+  gemini: 0.6,
+  bedrock: 0.35,
+}[env.EMBEDDING_PROVIDER];
+
 export const config = {
   ...env,
+  LOW_CONFIDENCE_THRESHOLD: env.LOW_CONFIDENCE_THRESHOLD ?? defaultLowConfidenceThreshold,
   CHAT_MODEL: env.CHAT_MODEL ?? defaultChatModel,
   // Only used on Bedrock, where refusal fallback runs client-side via middleware.
   FALLBACK_MODEL: env.FALLBACK_MODEL ?? "anthropic.claude-opus-4-8",

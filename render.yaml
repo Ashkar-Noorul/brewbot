@@ -1,0 +1,29 @@
+# Render Blueprint: New > Blueprint in the Render dashboard, pick this repo, and Render creates the
+# service from this file. Values marked "sync: false" are secrets Render asks for once, at creation.
+services:
+  - type: web
+    name: brewbot
+    runtime: docker
+    plan: free
+    # Next to the Neon database (AWS us-east-1, N. Virginia): every chat makes several queries.
+    region: virginia
+    dockerfilePath: ./Dockerfile
+    # /ping doesn't touch the database, so health checks don't keep Neon awake.
+    healthCheckPath: /ping
+    # Every push to the default branch redeploys.
+    autoDeployTrigger: commit
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: EMBEDDING_PROVIDER
+        value: gemini
+      # Neon's pooled connection string (DATABASE_URL in .env.neon).
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      # At least 16 characters; protects the /admin analytics dashboard.
+      - key: ADMIN_TOKEN
+        sync: false

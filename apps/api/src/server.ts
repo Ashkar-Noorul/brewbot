@@ -26,6 +26,13 @@ app.use(express.json({ limit: "100kb" }));
 const limit = (windowMinutes: number, max: number) =>
   rateLimit({ windowMs: windowMinutes * 60_000, limit: max, standardHeaders: "draft-8", legacyHeaders: false });
 
+// Liveness only, never touches the database: for the host's health checks and uptime pingers, so
+// they keep the app warm without keeping the (scale-to-zero) database awake around the clock.
+app.get("/ping", (_req, res) => {
+  res.type("text").send("ok");
+});
+
+// Readiness: also checks the database and that the docs are ingested.
 app.get("/health", async (_req, res) => {
   const { rows } = await pool.query<{ count: string }>("SELECT count(*) FROM chunks");
   res.json({ ok: true, provider: config.LLM_PROVIDER, model: config.CHAT_MODEL, chunks: Number(rows[0]?.count) });
