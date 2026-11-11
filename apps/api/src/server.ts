@@ -18,8 +18,9 @@ const dashboardDir = path.join(appsDir, "dashboard/dist");
 await migrate();
 
 const app = express();
-// Behind a proxy or load balancer in production, so rate limits see the visitor's IP.
-app.set("trust proxy", 1);
+// Behind proxies in production: trust exactly that many X-Forwarded-For hops, so rate limits see the
+// visitor's IP. Trusting more than are really there would let visitors fake their IP.
+app.set("trust proxy", config.TRUST_PROXY_HOPS);
 app.use(express.json({ limit: "100kb" }));
 
 // Per-IP limits: each chat message costs money, and the order lookup shouldn't be brute-forced.

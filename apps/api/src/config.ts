@@ -18,6 +18,9 @@ const schema = z.object({
   // Protects the analytics dashboard, which shows customer names and emails. Unset = dashboard disabled.
   ADMIN_TOKEN: z.string().min(16).or(z.literal("")).optional(),
   PORT: z.coerce.number().int().default(3001),
+  // How many proxies sit in front of the app, so rate limits see the visitor's IP rather than a
+  // proxy's. 1 = one load balancer. Render is 2 (Cloudflare, then Render's load balancer).
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(1),
   CORS_ORIGIN: z.string().default("*"),
 });
 

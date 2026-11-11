@@ -19,6 +19,9 @@ services:
         value: gemini
       - key: EMBEDDING_PROVIDER
         value: gemini
+      # Requests pass through Cloudflare and then Render's load balancer before reaching the app.
+      - key: TRUST_PROXY_HOPS
+        value: "2"
       # Neon's pooled connection string (DATABASE_URL in .env.neon).
       - key: DATABASE_URL
         sync: false
