@@ -1,0 +1,27 @@
+{
+  "name": "brewbot-infra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AWS CDK app: BrewBot on Amazon ECS Express Mode (Fargate) in the AWS project's Region",
+  "scripts": {
+    "cdk": "cdk",
+    "synth": "cdk synth --strict",
+    "diff": "cdk diff",
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy",
+    "secrets": "tsx scripts/put-secrets.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.277.0",
+    "constructs": "^10.8.1"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-ssm": "^3.1168.0",
+    "@types/node": "^26.6.6",
+    "aws-cdk": "^2.1148.0",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  }
+}

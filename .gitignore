@@ -5,3 +5,5 @@ dist
 eval-results
 .neon
 .env.neon
+.env.neon-sydney
+cdk.out

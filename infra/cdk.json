@@ -1,0 +1,7 @@
+{
+  "app": "npx tsx bin/brewbot.ts",
+  "watch": {
+    "include": ["bin/**", "lib/**"]
+  },
+  "context": {}
+}
