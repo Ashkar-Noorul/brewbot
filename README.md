@@ -2,7 +2,9 @@
 
 BrewBot is a customer-support chatbot for **Bean & Barrel Coffee Co.**, a fictional online shop that sells espresso machines and grinders. It answers **only from the shop's own documents**, cites a source for each answer, and when the answer isn't in the documents it says so instead of guessing.
 
-> Status: **Milestones 1–4b**: streaming `/chat` API with citations, an embeddable chat widget, order lookups, human handoff, an automated eval scoring 36/37, and an analytics dashboard. Deployment and CI are next (see the [roadmap](#roadmap)).
+**Live demo:** https://br-d122a88361a24b8e94f91876dc5ce75e.ecs.ap-southeast-2.on.aws (AWS ECS Fargate, Sydney). Open the chat bubble at the bottom right. Try *"My Aurora shows E03"* or *"Where is order BB-104233? My email is alex@example.com"*.
+
+> Status: **Milestones 1–4c**: streaming `/chat` API with citations, an embeddable chat widget, order lookups, human handoff, an automated eval scoring 36/37, an analytics dashboard, and deployment on AWS (ECS Fargate, defined with AWS CDK) and Render. CI/CD is next (see the [roadmap](#roadmap)).
 
 ## Architecture
 
@@ -38,12 +40,15 @@ visitor ──► POST /chat (SSE) ──► embed question ──► top-k simi
 
 ```
 apps/api            Express API: ingestion, retrieval, /chat; also serves the widget and demo page
+  db/schema.sql     Tables (chunks with pgvector, chat_logs, tickets, orders), applied on startup
+  src/scripts/      ingest, seed-demo, smoke
 apps/widget         Embeddable React chat widget, built to a single brewbot.js
 apps/dashboard      Analytics dashboard (React), served by the API at /admin
-  db/schema.sql     pgvector tables (chunks, chat_logs)
-  src/scripts/ingest.ts
 packages/shared     Types shared by the API, widget and dashboard
 data/docs           The fictional shop's knowledge base (10 markdown docs)
+infra               AWS CDK app: deploys the container to ECS Express Mode (see infra/README.md)
+Dockerfile          One image for the API, widget and dashboard
+render.yaml         Render Blueprint for the free-tier deployment
 requests.http       Sample requests (VS Code REST Client)
 ```
 
@@ -158,6 +163,33 @@ Access needs a bearer token: set `ADMIN_TOKEN` in `.env` (at least 16 characters
 
 For a demo with realistic data, `npm run seed:demo` adds 60 days of synthetic conversations and tickets. They are tagged, so `npm run seed:demo -- --clear` removes only those. `npm start` builds the widget and the dashboard; for dashboard development, run `npm run dev:dashboard` alongside `npm run dev`.
 
+## Deployment
+
+The app ships as **one Docker image** ([Dockerfile](Dockerfile)): a multi-stage build that bundles the API, the widget and the dashboard. It runs as a non-root user and executes the TypeScript directly with Node's type stripping. All configuration comes from environment variables, so no secrets are baked into the image.
+
+```
+                        ┌──────────── AWS, ap-southeast-2 (Sydney) ────────────┐
+visitor ──HTTPS──►      │  Application Load Balancer (ECS-managed, ACM cert)   │
+                        │              │                                       │
+                        │              ▼                                       │
+                        │  ECS Express Mode service on Fargate (1–2 tasks)     │
+                        │  secrets from SSM Parameter Store (SecureString)     │
+                        └──────────────┬───────────────────────────────────────┘
+                                       ├──► Neon Postgres + pgvector, same Region
+                                       └──► Gemini API
+```
+
+| Target | How | Notes |
+|---|---|---|
+| **AWS** ([live](https://br-d122a88361a24b8e94f91876dc5ce75e.ecs.ap-southeast-2.on.aws)) | **ECS Express Mode** on Fargate, defined in **AWS CDK** (TypeScript) in [infra/](infra/) | HTTPS load balancer, auto scaling, CloudWatch logs and deployment alarms managed by ECS. Least-privilege IAM roles. `cdk deploy` builds and pushes the image to ECR; `cdk destroy` removes everything. See [infra/README.md](infra/README.md). |
+| **Render** (free tier) | [render.yaml](render.yaml) Blueprint, auto-deploys on push | Free instance sleeps when idle; `/ping` is a database-free health check so pings don't keep the database awake. |
+| **Database** | [Neon](https://neon.tech) serverless Postgres with pgvector | One database per deployment, in the same Region as the app, because each chat runs several queries. Scales to zero when idle. |
+
+Things that only showed up in production:
+- **Rate limits behind proxies.** Per-visitor limits key on the client IP, which the app reads from `X-Forwarded-For`. `TRUST_PROXY_HOPS` must match the number of proxies in front of the app (1 for the AWS load balancer). Too few, and visitors share limits; too many, and anyone can fake their IP.
+- **First deploy on a new AWS account** failed because ECS's service-linked roles didn't exist yet; they are created on first use.
+- **The low-confidence threshold is model-specific.** It now defaults per embedding provider (Gemini 0.6, Titan 0.35), so a deployment can't silently use the wrong one.
+
 ## Roadmap
 
 - [x] **M1**: knowledge base, ingestion, RAG `/chat` with citations and streaming, chat logging
@@ -165,5 +197,5 @@ For a demo with realistic data, `npm run seed:demo` adds 60 days of synthetic co
 - [x] **M3**: human handoff (contact form, tickets, webhook), `get_order_status` tool, guardrails
 - [x] **M4a**: eval suite (37 cases, deterministic scoring)
 - [x] **M4b**: analytics dashboard (trends, topics, weak answers, tickets)
-- [ ] **M4c**: public deployment
+- [x] **M4c**: public deployment (Docker; AWS ECS Express Mode via CDK; Render; Neon Postgres)
 - [ ] **M4d**: CI/CD (typecheck and evals on every push)
